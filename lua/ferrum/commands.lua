@@ -8,7 +8,7 @@ local cleanup = function(source_buf)
   if not vim.api.nvim_buf_is_valid(source_buf) then return end
   vim.b[source_buf].repl = nil
   pcall(vim.api.nvim_buf_del_user_command, source_buf, 'SendREPL')
-  pcall(vim.api.nvim_buf_del_user_command, source_buf, 'SendLineREPL')
+  pcall(vim.api.nvim_buf_del_user_command, source_buf, 'SendlnREPL')
   pcall(vim.api.nvim_buf_del_user_command, source_buf, 'SendRangeREPL')
   pcall(vim.api.nvim_buf_del_user_command, source_buf, 'StopREPL')
 end
@@ -36,15 +36,20 @@ local buffer_local_commands_setup = function(buf)
   end
 
   -- write to REPL
-  vim.api.nvim_buf_create_user_command(buf, 'Send', sendcmd(Repl.send), {
+  vim.api.nvim_buf_create_user_command(buf, 'SendREPL', sendcmd(Repl.send), {
     desc = 'Send text to REPL session bound to current buffer',
     nargs = 1,
   })
-  vim.api.nvim_buf_create_user_command(buf, 'SendLine', sendcmd(Repl.sendln), {
-    desc = 'Send a line to REPL session bound to current buffer',
-    nargs = 1,
-  })
-  vim.api.nvim_buf_create_user_command(buf, 'SendRange', function(o)
+  vim.api.nvim_buf_create_user_command(
+    buf,
+    'SendlnREPL',
+    sendcmd(Repl.sendln),
+    {
+      desc = 'Send a line to REPL session bound to current buffer',
+      nargs = 1,
+    }
+  )
+  vim.api.nvim_buf_create_user_command(buf, 'SendRangeREPL', function(o)
     ---@type string[]
     local lines = vim.fn.getline(o.line1, o.line2)
     ---@type integer?
@@ -56,7 +61,7 @@ local buffer_local_commands_setup = function(buf)
     range = true,
   })
 
-  vim.api.nvim_buf_create_user_command(buf, 'Stop', function(o)
+  vim.api.nvim_buf_create_user_command(buf, 'StopREPL', function(o)
     local bvars = vim.b[buf]
     ---@type integer?
     local job = vim.tbl_get(bvars, 'repl', 'job')
