@@ -1,0 +1,85 @@
+*ferrum.txt*
+
+Author:  Cdrman Fu <https://github.com/Futarimiti>
+Repo:	 https://github.com/Futarimiti/ferrum.nvim
+Licence: WTFPL
+
+==============================================================================
+CONTENTS					      *ferrum-contents*
+
+INTRODUCTION......................................|ferrum-introduction|
+CONFIGURATION....................................|ferrum-configuration|
+USAGE....................................................|ferrum-usage|
+PLUGIN STRUCTURE..............................|ferrum-plugin-structure|
+
+==============================================================================
+INTRODUCTION					  *ferrum-introduction*
+
+ferrum is named after `iron.nvim`. Like how iron stands for "Interactive REPL
+Over Neovim," ferrum goes by "Flexible Embedded REPL Runner for Unnecessary
+Multiprocessing."
+
+==============================================================================
+CONFIGURATION					 *ferrum-configuration*
+
+ferrum supports no configuration yet.
+
+==============================================================================
+USAGE							 *ferrum-usage*
+
+Commands					      *ferrum-commands*
+
+							 *ferrum-:REPL*
+:REPL {command}		Start a REPL session for the current buffer in a new,
+			focused window.
+
+			Can only split above currently.
+
+			Upon a successful invocation, `:REPL` creates sereval
+			buffer-local commands for the invoking buffer which
+			communicates with and controls the spawned session
+			(documented below). These commands will be deleted
+			when the REPL session finishes. `:REPL` is the only
+			command available at all time.
+			
+			One REPL session per buffer only. Calling `:REPL` on a
+			bound buffer does not spawn any new sessions, but
+			displays info about the current bound session.
+
+:REPL! {command}	Start a REPL session for the current buffer in a new,
+			unfocused window.
+
+							     *b:ferrum*
+:REPL[!]		With no arguments, |:REPL| the command given by
+			|b:ferrum|. If not set, prompt for a shell command.
+
+						     *ferrum-:SendREPL*
+:SendREPL {text}	Send arbitrary text to the REPL session bound to the
+			current buffer. Does not return at the end; users may
+			find |:SendlnREPL| more useful.
+
+						   *ferrum-:SendlnREPL*
+:SendlnREPL {text}	Like |:SendREPL|, but includes a newline at the end.
+
+						*ferrum-:SendRangeREPL*
+:[range]SendRangeREPL	|:SendlnREPL| each line in [range] lines to the bound
+			REPL session.
+
+						     *ferrum-:StopREPL*
+:StopREPL[!]		End the bound REPL session and delete the buffer-local
+			commands created by `:REPL` (including self). With [!]
+			also delete the terminal buffer and close the window.
+
+==============================================================================
+PLUGIN STRUCTURE			      *ferrum-plugin-structure*
+
+>
+    ferrum
+    ├── commands.lua
+    ├── core.lua
+    ├── init.lua
+    └── util.lua
+
+<
+
+vim:tw=78:ts=8:noet:ft=help:norl:
