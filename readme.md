@@ -4,13 +4,14 @@ iron.nvim ripoff
 
 ## Usage
 
-- Start REPL session per buffer with `:REPL`  
-- Send text to the REPL with `:SendREPL`, or send a range with `'<,'>SendRangeREPL`
-- Stop REPL sessions with `:StopREPL`  
+- Start REPL session per buffer with `:REPL`  to activate buflocal commands
+- Send text to the REPL with `:Sendln`, or send a range with `'<,'>SendRange`
+- Stop REPL sessions with `:Stop`  
+- Deactivates buflocal commands when finished
 
 See `:h ferrum.txt` for more details
 
-## Plugin Structure
+## Plugin structure
 
 ```
 ferrum
@@ -20,6 +21,6 @@ ferrum
 └── util.lua
 ```
 
-## License
+## Licence
 
 WTFPL
