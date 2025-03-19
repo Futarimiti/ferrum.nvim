@@ -65,6 +65,18 @@ Commands					      *ferrum-commands*
 :[range]SendRangeREPL	|:SendlnREPL| each line in [range] lines to the bound
 			REPL session.
 
+						    *ferrum-:FocusREPL*
+:FocusREPL[!]		Focus on the bound REPL session. Useful when the user
+			accidentally closes REPL window.
+			- If the REPL session buffer has been opened in a
+			  window, focus on it;
+			- If multiple windows have been opened for the REPL
+			  session buffer, focus on a random one;
+			- If the REPL session buffer is not being displayed in
+			  any window, open a new split and focus on it.
+
+			With [!] also |:startinsert|.
+
 						     *ferrum-:StopREPL*
 :StopREPL[!]		End the bound REPL session and delete the buffer-local
 			commands created by `:REPL` (including self). With [!]

@@ -10,6 +10,7 @@ local cleanup = function(source_buf)
   pcall(vim.api.nvim_buf_del_user_command, source_buf, 'SendREPL')
   pcall(vim.api.nvim_buf_del_user_command, source_buf, 'SendlnREPL')
   pcall(vim.api.nvim_buf_del_user_command, source_buf, 'SendRangeREPL')
+  pcall(vim.api.nvim_buf_del_user_command, source_buf, 'FocusREPL')
   pcall(vim.api.nvim_buf_del_user_command, source_buf, 'StopREPL')
 end
 
@@ -59,6 +60,29 @@ local buffer_local_commands_setup = function(buf)
     desc = 'Send range of lines (default .) to REPL session bound to current buffer',
     nargs = 0,
     range = true,
+  })
+
+  -- if REPL session buffer is displayed in any window, focus on one of them
+  -- otherwise split a new window and put REPL session in, then focus
+  vim.api.nvim_buf_create_user_command(buf, 'FocusREPL', function(o)
+    ---@type integer
+    local repl_buf = vim.b[buf].repl.buf
+    -- winids where the REPL session buffer is being displayed
+    local display_wins = vim.fn.win_findbuf(repl_buf)
+    ---@type integer? randomly select a window, if any
+    local maybe_random_win = display_wins[math.random(#display_wins)]
+    if maybe_random_win == nil then
+      vim.b[buf].repl.win = vim.api.nvim_open_win(repl_buf, true, {
+        split = 'above' --[[hardcoded TODO]],
+      })
+    else
+      vim.api.nvim_set_current_win(maybe_random_win)
+    end
+    if o.bang then vim.cmd.startinsert() end
+  end, {
+    desc = 'Focus on REPL session bound to current buffer (! to startinsert)',
+    nargs = 0,
+    bang = true,
   })
 
   vim.api.nvim_buf_create_user_command(buf, 'StopREPL', function(o)
