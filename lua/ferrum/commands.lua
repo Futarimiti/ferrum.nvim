@@ -182,7 +182,11 @@ Commands.setup = function()
       if not vim.tbl_isempty(o.fargs) then return o.fargs end
       local bvar = vim.b[current.buf].ferrum
       if bvar == nil then
-        return vim.split(vim.fn.input('> ', '', 'shellcmdline'), ' +')
+        return vim.split(
+          vim.fn.input('> ', '', 'shellcmdline'),
+          '%s+',
+          { trimempty = true }
+        )
       end
       if type(bvar) == 'string' then
         return vim.split(bvar, '%s+', { trimempty = true })
