@@ -22,6 +22,11 @@ Multiprocessing."
 ==============================================================================
 CONFIGURATION					 *ferrum-configuration*
 
+Install using your favourite package manager, then
+>lua
+    require('ferrum').setup {...}
+<
+
 ferrum supports no configuration yet.
 
 ==============================================================================
