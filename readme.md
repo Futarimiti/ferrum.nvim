@@ -85,7 +85,7 @@ xnoremap <buffer> <silent> <leader>r
         \:SendlnREPL :}<CR>
 ```
 
-Yeah I should definitely make a lua API or something.
+Yeah I should definitely make a lua API or something, this is tedious
 
 ### Multi-client
 
