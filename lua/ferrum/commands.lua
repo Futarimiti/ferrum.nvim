@@ -76,7 +76,8 @@ end
 ---@param o vim.api.keyset.create_user_command.command_args
 local REPL = function(o)
   local source = {
-    buf = vim.api.nvim_buf_is_valid(o.count) and o.count
+    buf = o.count == 0 and vim.api.nvim_get_current_buf()
+      or vim.api.nvim_buf_is_valid(o.count) and o.count
       or error(('invalid buffer: %d'):format(o.count)),
     win = vim.api.nvim_get_current_win(),
   }
