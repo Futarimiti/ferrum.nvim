@@ -8,7 +8,6 @@ Licence: WTFPL
 CONTENTS					      *ferrum-contents*
 
 INTRODUCTION......................................|ferrum-introduction|
-EXAMPLE................................................|ferrum-example|
 CONFIGURATION....................................|ferrum-configuration|
 USAGE....................................................|ferrum-usage|
 PLUGIN STRUCTURE..............................|ferrum-plugin-structure|
@@ -21,76 +20,6 @@ Interact with REPL within working buffer.
 ferrum is named after `iron.nvim`. Like how iron stands for "Interactive REPL
 Over Neovim," ferrum goes by "Flexible Embedded REPL Runner for Unnecessary
 Multiprocessing."
-
-==============================================================================
-EXAMPLE						       *ferrum-example*
-
-------------------------------------------------------------------------------
-Starting
-
-Within `A.hs` buffer, run `:REPL ghci %` to start a GHCi session with `A.hs`
-loaded. This launches GHCi linked to `A.hs` buffer in a split window:
->
-	+----------------------------------+
-	|-- ghci term buffer		   |
-	|ghci>				   |
-	|~				   |
-	|term://ghci=======================|
-	|-- file A.hs			   |
-	|~				   |
-	|A.hs==============================|
-	|				   |
-	+----------------------------------+
-<
-At the same time, several buffer-local commands are created in `A.hs` buffer
-to control the session:
-- |:SendlnREPL| (`:Sendln` if unambiguous) to send a single line.
-- `:[range]`|SendRangeREPL| (or `:SendRange`) to send multiple lines in buffer,
-  `:'<,'>SendRange` to send visual selected lines. NOTE: user may need to wrap
-  them with `:{` and `:}` in particular to GHCi.
-
-Try `:Sendln :t (>>=)` from `A.hs` buffer.
-
-GHCi uses `:r` to reload all loaded modules. To auto-reload modules on save,
-use
->vim
-   autocmd BufWritePost *.hs,*.lhs silent! SendlnREPL :r
-<
-------------------------------------------------------------------------------
-Multi-client
-
-Each buffer controls only one REPL session, but an active session can be
-shared. Use |:LinkREPL| (`:Link` if unambiguous) to connect a buffer to an
-existing session. Think of language servers and clients.
->
-   +------+
-   |	  |			  
-   | A.hs |	:Sendln 3 + 4	    +---------+ 
-   |	  | --------------------->  |	      |  
-   +------+			    | ghci    |  
-   +------+			    | session |  
-   |	  | --------------------->  |	      |
-   | B.hs |	    :Stop	    +---------+  
-   |	  |	   
-   +------+
-<
-Where commands from all clients affect the shared REPL, and terminating the
-session unlinks all clients.
-
-------------------------------------------------------------------------------
-Finishing
-
-|:StopREPL| (`:Stop` if unambiguous) in one of the client buffers finishes the
-linking session. Alternatively, the user may also |:bwipeout|! the REPL buffer
-or quit the session manually.
-
-Upon doing so, buffer-local commands to interact with the session are removed
-from each of client buffers.
-
-Note that |:hid|ing or |:quit|ing the REPL window does not terminate the
-session and the control from client buffers are not dropped. If the user
-accidentally closes the session window, use |:FocusREPL| (`:Focus` if
-unambiguous) to bring it back.
 
 ==============================================================================
 CONFIGURATION					 *ferrum-configuration*
