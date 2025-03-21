@@ -3,7 +3,7 @@
     <C-[><C-W><C-K>i:r<CR><C-\><C-N><C-W><C-J>i
 
 What that does is to take you out of current working buffer,
-enters the GHCi session, reloads everything, and go back to where you were.
+enters the GHCi session, reloads everything, and return to where you were.
 I'm not having fun typing that every time a change is made,
 neither are my pinkies. Time to make a change.
 
@@ -149,7 +149,7 @@ breaking changes in the upcoming weeks.
 If you're interested in working on any of the goals above,
 please check with me first as I may already be on them!
 
-And of course, bug reports and QoL improvements are also welcome.
+And of course, bug reports and QoL improvements are always welcome.
 
 ## Related projects
 
@@ -157,7 +157,7 @@ And of course, bug reports and QoL improvements are also welcome.
 
 ferrum was directly inspired by iron, though only by the name.
 I had mix feelings for iron, which led to birth of ferrum
-where I'm finally satisfied.
+where I'm finally satisfied. *Or am I?* (Michael voice)
 
 #### [dispatch.vim](https://github.com/tpope/vim-dispatch)
 
