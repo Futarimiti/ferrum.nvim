@@ -15,6 +15,16 @@ require('ferrum').setup {}
 
 See `:h ferrum.txt` for more details
 
+## FAQ
+
+> I want a vertical split for the REPL window.
+
+`:REPL` accepts modifiers.
+`:vertical rightbelow REPL` splits rightwards. `:vertical leftabove REPL` splits leftwards.
+`:horizontal rightbelow REPL` splits downwards. `:horizontal leftabove REPL` splits upwards.
+`:horizontal topleft REPL` splits at top. `:horizontal botright REPL` splits at bottom.
+`:tab REPL` opens a new tab.
+
 ## Plugin structure
 
 ```
