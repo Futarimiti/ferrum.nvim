@@ -25,20 +25,6 @@ See `:h ferrum.txt` for more details
 `:horizontal topleft REPL` splits at top. `:horizontal botright REPL` splits at bottom.
 `:tab REPL` opens a new tab.
 
-## Plugin structure
-
-```
-lua/ferrum
-├── buffer.lua
-├── commands
-│   └── buflocal.lua
-├── commands.lua
-├── core.lua
-├── init.lua
-├── jobs.lua
-└── util.lua
-```
-
 ## Licence
 
 WTFPL
