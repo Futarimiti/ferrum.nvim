@@ -1,6 +1,5 @@
 -- Buflocal commands setup & de-setup
 
-local Jobs = require 'ferrum.jobs'
 local Repl = require 'ferrum.core'
 local Util = require 'ferrum.util'
 local safe = Util.safe
@@ -93,7 +92,6 @@ local commands = {
           -- if opened in a window that should also be closed
           pcall(vim.api.nvim_buf_delete, repl_buf, { force = true })
         end
-        Jobs.del(job)
       end,
       opts = {
         desc = ('Finish job #%d (!%s) (! to also close window)'):format(

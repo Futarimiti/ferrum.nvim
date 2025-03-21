@@ -111,6 +111,7 @@ local REPL = function(o)
         ---@cast client integer
         Buffer.free(client, false, true)
       end)
+      Jobs.del(job)
     end
   )
 
