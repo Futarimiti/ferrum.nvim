@@ -112,8 +112,6 @@ Commands					      *ferrum-commands*
 :[N]REPL {command}	Start a REPL session for buffer [N] in a new, focused
 			window. If [N] is not given, use the current buffer.
 
-			Can only split above currently.
-
 			Upon a successful invocation, `:REPL` creates sereval
 			|ferrum-buflocal-commands| on the invoking buffer
 			which communicates with and controls the spawned

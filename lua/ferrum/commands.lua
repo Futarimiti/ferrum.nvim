@@ -11,25 +11,16 @@ Commands.Buflocal = require 'ferrum.commands.buflocal'
 
 -- Spawn a REPL session in a new split, relative to source win.
 ---@param source_win integer
----@param split_direction ('above'|'below'|'left'|'right')
+---@param mods string `<mods>`; modifiers for opening the new window
 ---@param cmd string[]
 ---@param focus boolean focus in the new split?
 ---@param on_exit fun(job:integer,exitcode:integer,event:string)
 ---@return integer job
 ---@return integer repl buffer
-local spawn_repl_session = function(
-  source_win,
-  split_direction,
-  cmd,
-  focus,
-  on_exit
-)
-  local buf = vim.api.nvim_create_buf(true, true)
-  local win = vim.api.nvim_open_win(
-    buf,
-    true,
-    { split = split_direction, win = source_win }
-  )
+local spawn_repl_session = function(source_win, mods, cmd, focus, on_exit)
+  vim.cmd(mods .. ' new') -- XXX
+  local buf = vim.api.nvim_get_current_buf()
+  local win = vim.api.nvim_get_current_win()
 
   local ok, job = safe(Repl.spawn, win, cmd, on_exit)
   if not ok then
@@ -92,14 +83,12 @@ local REPL = function(o)
 
   Buffer.free(source.buf, true)
 
-  -- currently hardcoded
-  local split_direction = 'above'
   local cmd = get_cmd(o, source.buf)
   local focus = not o.bang
 
   local job, repl_buf = spawn_repl_session(
     source.win,
-    split_direction,
+    o.mods,
     cmd,
     focus,
     function(job, _, _)

@@ -66,9 +66,8 @@ local commands = {
         ---@type integer? random window
         local maybe_random_win = display_wins[math.random(#display_wins)]
         if maybe_random_win == nil then
-          vim.api.nvim_open_win(repl_buf, true, {
-            split = 'above' --[[hardcoded TODO]],
-          })
+          vim.cmd(o.mods .. ' new') -- XXX
+          vim.api.nvim_win_set_buf(0, repl_buf)
         else
           vim.api.nvim_set_current_win(maybe_random_win)
         end
