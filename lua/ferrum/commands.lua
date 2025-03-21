@@ -1,245 +1,223 @@
-local Util = require 'ferrum/util'
+local Jobs = require 'ferrum.jobs'
+local Util = require 'ferrum.util'
 local safe = Util.safe
-local Repl = require 'ferrum/core'
-
--- Cleanup source buffer: remove b:repl and buflocal commands created by :REPL
----@param source_buf integer
-local cleanup = function(source_buf)
-  if not vim.api.nvim_buf_is_valid(source_buf) then return end
-  vim.b[source_buf].repl = nil
-  pcall(vim.api.nvim_buf_del_user_command, source_buf, 'SendREPL')
-  pcall(vim.api.nvim_buf_del_user_command, source_buf, 'SendlnREPL')
-  pcall(vim.api.nvim_buf_del_user_command, source_buf, 'SendRangeREPL')
-  pcall(vim.api.nvim_buf_del_user_command, source_buf, 'FocusREPL')
-  pcall(vim.api.nvim_buf_del_user_command, source_buf, 'StopREPL')
-end
-
--- Setup buflocal commands (used by :REPL)
----@param buf integer source buffer
-local buffer_local_commands_setup = function(buf)
-  -- Shortcut for implementing :Send and :SendLine
-  ---@param f fun(_:integer,_:string|string[])
-  ---@return fun(_:vim.api.keyset.create_user_command.command_args)
-  local sendcmd = function(f)
-    return function(o)
-      ---@type integer?
-      local job = vim.tbl_get(vim.b[buf], 'repl', 'job')
-      if job == nil then
-        error 'no REPL bound to current buffer'
-      else
-        local ok, res = safe(f, job, o.args)
-        if not ok then
-          ---@cast res string
-          vim.api.nvim_echo({ { res, 'ErrorMsg' } }, true, { err = true })
-        end
-      end
-    end
-  end
-
-  -- write to REPL
-  vim.api.nvim_buf_create_user_command(buf, 'SendREPL', sendcmd(Repl.send), {
-    desc = 'Send text to REPL session bound to current buffer',
-    nargs = 1,
-  })
-  vim.api.nvim_buf_create_user_command(
-    buf,
-    'SendlnREPL',
-    sendcmd(Repl.sendln),
-    {
-      desc = 'Send a line to REPL session bound to current buffer',
-      nargs = 1,
-    }
-  )
-  vim.api.nvim_buf_create_user_command(buf, 'SendRangeREPL', function(o)
-    ---@type string[]
-    local lines = vim.fn.getline(o.line1, o.line2)
-    ---@type integer?
-    local job = vim.tbl_get(vim.b[buf], 'repl', 'job')
-    Repl.sendln(job, lines)
-  end, {
-    desc = 'Send range of lines (default .) to REPL session bound to current buffer',
-    nargs = 0,
-    range = true,
-  })
-
-  -- if REPL session buffer is displayed in any window, focus on one of them
-  -- otherwise split a new window and put REPL session in, then focus
-  vim.api.nvim_buf_create_user_command(buf, 'FocusREPL', function(o)
-    ---@type integer
-    local repl_buf = vim.b[buf].repl.buf
-    -- winids where the REPL session buffer is being displayed
-    local display_wins = vim.fn.win_findbuf(repl_buf)
-    ---@type integer? randomly select a window, if any
-    local maybe_random_win = display_wins[math.random(#display_wins)]
-    if maybe_random_win == nil then
-      vim.b[buf].repl.win = vim.api.nvim_open_win(repl_buf, true, {
-        split = 'above' --[[hardcoded TODO]],
-      })
-    else
-      vim.api.nvim_set_current_win(maybe_random_win)
-    end
-    if o.bang then vim.cmd.startinsert() end
-  end, {
-    desc = 'Focus on REPL session bound to current buffer (! to startinsert)',
-    nargs = 0,
-    bang = true,
-  })
-
-  vim.api.nvim_buf_create_user_command(buf, 'StopREPL', function(o)
-    local bvars = vim.b[buf]
-    ---@type integer?
-    local job = vim.tbl_get(bvars, 'repl', 'job')
-    if job then Repl.stop(job) end
-    if o.bang then
-      ---@type integer?
-      local repl_buf = vim.tbl_get(bvars, 'repl', 'buf')
-      ---@type integer?
-      local repl_win = vim.tbl_get(bvars, 'repl', 'win')
-      -- tolerate invalid ids
-      if repl_buf then
-        pcall(vim.api.nvim_buf_delete, repl_buf, { force = true })
-      end
-      if repl_win then pcall(vim.api.nvim_win_close, repl_win, true) end
-    end
-
-    cleanup(buf)
-  end, {
-    desc = 'Stop the REPL session bound to current buffer (! to also close window)',
-    bang = true,
-  })
-end
-
-local group = vim.api.nvim_create_augroup('REPL', {})
-
--- Set up autocmds:
--- * When repl buffer gets wiped out (:bw! or <CR> after process finishes):
---   do cleanup (delete buffer-local commands and variables) on source buffer
---   (buffer still accessible after :bd'ed)
----@param buf integer repl buf
-local autocmd_setup = function(buf)
-  vim.api.nvim_create_autocmd('BufWipeout', {
-    desc = ('cleanup work for REPL session at buf %d'):format(buf),
-    buffer = buf,
-    group = group,
-    callback = function()
-      local source = vim.b[buf].source
-      vim.notify(
-        ('Finished: !%s (job %d)'):format(vim.fn.join(source.cmd), source.job),
-        vim.log.levels.INFO
-      )
-      cleanup(source.buf)
-    end,
-  })
-end
+local echoerr = Util.echoerr
+local Repl = require 'ferrum.core'
+local Autocmds = { Buflocal = require 'ferrum.autocmds.buflocal' }
+local Buffer = require 'ferrum.buffer'
 
 local Commands = {}
 
--- Set up :REPL command.
+Commands.Buflocal = require 'ferrum.commands.buflocal'
+
+-- Spawn a REPL session in a new split, relative to source win.
+---@param source_win integer
+---@param split_direction ('above'|'below'|'left'|'right')
+---@param cmd string[]
+---@param focus boolean focus in the new split?
+---@return integer job
+---@return integer repl buffer
+local spawn_repl_session = function(source_win, split_direction, cmd, focus)
+  local buf = vim.api.nvim_create_buf(true, true)
+  local win = vim.api.nvim_open_win(
+    buf,
+    true,
+    { split = split_direction, win = source_win }
+  )
+
+  local ok, job = safe(Repl.spawn, win, cmd)
+  if not ok then
+    vim.api.nvim_buf_delete(buf, { force = true })
+    vim.api.nvim_set_current_win(source_win)
+
+    ---@type string
+    local msg = job
+    error(msg)
+  end
+
+  if focus then
+    vim.cmd.startinsert()
+  else
+    ---@diagnostic disable-next-line: param-type-mismatch
+    vim.fn.cursor('$', 0)
+    vim.api.nvim_set_current_win(source_win) -- jump back
+  end
+
+  ---@cast job integer
+  return job, buf
+end
+
+-- Determine which shell command to run.
+---@param o vim.api.keyset.create_user_command.command_args
+---@param buf integer client buffer
+---@return string[] shell cmd
+local get_cmd = function(o, buf)
+  if not vim.tbl_isempty(o.fargs) then return o.fargs end
+  local var = 'ferrum' -- b:ferrum
+  local bvar = vim.b[buf][var]
+  if bvar == nil then
+    local ret = vim.split(
+      vim.fn.input('> ', '', 'shellcmdline'),
+      '%s+',
+      { trimempty = true }
+    )
+    print '' -- flush input line
+    return ret
+  end
+  if type(bvar) == 'string' then
+    return vim.split(bvar, '%s+', { trimempty = true })
+  end
+  if type(bvar) == 'table' then return bvar end
+  error(('invalid b:ferrum value: %s'):format(vim.inspect(bvar)))
+end
+
+---@param o vim.api.keyset.create_user_command.command_args
+local REPL = function(o)
+  local source = {
+    buf = vim.api.nvim_buf_is_valid(o.count) and o.count
+      or error(('invalid buffer: %d'):format(o.count)),
+    win = vim.api.nvim_get_current_win(),
+  }
+
+  Buffer.free(source.buf, true)
+
+  -- currently hardcoded
+  local split_direction = 'above'
+  local cmd = get_cmd(o, source.buf)
+  local focus = not o.bang
+
+  local job, repl_buf =
+    spawn_repl_session(source.win, split_direction, cmd, focus)
+  vim.notify(
+    (':!%s (job %d)'):format(vim.fn.join(cmd), job),
+    vim.log.levels.INFO
+  )
+
+  Jobs.set(job, {
+    clients = { source.buf },
+    repl = repl_buf,
+    cmd = cmd,
+  })
+
+  vim.b[source.buf].ferrum_job = job
+
+  Commands.Buflocal.setup {
+    client = source.buf,
+    repl = repl_buf,
+    cmd = cmd,
+    job = job,
+  }
+
+  Autocmds.Buflocal.create {
+    client = source.buf,
+    repl = repl_buf,
+    cmd = cmd,
+    job = job,
+  }
+end
+
+---@param o vim.api.keyset.create_user_command.command_args
+---@return integer job
+---@return JobRecord job record
+local get_target_job = function(o)
+  if o.args == '' then
+    local jobs = Jobs.all()
+    if vim.tbl_isempty(jobs) then
+      error 'no ferrum jobs'
+    elseif vim.tbl_count(jobs) == 1 then
+      ---@type integer
+      local job = vim.tbl_keys(jobs)[1]
+      return job, jobs[job]
+    else
+      local job
+      vim.ui.select(vim.tbl_keys(jobs), {
+        prompt = 'Select ferrum session:',
+        format_item = function(j)
+          return ('job #%d (!%s)'):format(j, vim.fn.join(jobs[j].cmd, ' '))
+        end,
+      }, function(item, _)
+        ---@cast item integer?
+        job = assert(item, 'no session selected')
+      end)
+      return job, jobs[job]
+    end
+  else
+    local arg1 = vim.split(o.args, '%s+')[1]
+    local job = assert(tonumber(arg1), ('not an integer: %s'):format(arg1))
+    assert(
+      job >= 0 and job % 1 == 0,
+      ('positive integer required: %d'):format(job)
+    )
+    local record = assert(Jobs.get(job), ('invalid job #%d').format(job))
+    return job, record
+  end
+end
+
+---@param o vim.api.keyset.create_user_command.command_args
+local LinkREPL = function(o)
+  local source_buf = vim.api.nvim_get_current_buf()
+  local job, record = get_target_job(o)
+  local repl_buf = record.repl
+  local cmd = record.cmd
+
+  Buffer.free(source_buf, true)
+
+  Jobs.link(job, source_buf)
+
+  vim.b[source_buf].ferrum_job = job
+
+  Commands.Buflocal.setup {
+    client = source_buf,
+    repl = repl_buf,
+    cmd = cmd,
+    job = job,
+  }
+
+  Autocmds.Buflocal.create {
+    client = source_buf,
+    repl = repl_buf,
+    cmd = cmd,
+    job = job,
+  }
+end
+
+-- Set up :REPL and :LinkREPL command.
 Commands.setup = function()
   -- Spawn REPL session in a split
   -- unless the buffer is alreadys bound with a REPL buffer
   vim.api.nvim_create_user_command('REPL', function(o)
-    local current = {
-      buf = vim.api.nvim_get_current_buf(),
-      win = vim.api.nvim_get_current_win(),
-    }
-
-    if vim.tbl_get(vim.b[current.buf], 'repl') ~= nil then
-      local repl = vim.b[current.buf].repl
-      vim.notify(
-        ('already bound to REPL session at buffer %d (job %d: !%s)'):format(
-          repl.buf,
-          repl.job,
-          vim.fn.join(repl.cmd)
-        ),
-        vim.log.levels.WARN
-      )
-      vim.notify_once(
-        ':Stop existing bound REPL session first before starting another',
-        vim.log.levels.WARN
-      )
-      return
-    end
-
-    local repl = (function()
-      local newbuf = vim.api.nvim_create_buf(true, true)
-      -- must enter - can only spawn job in currently focused buffer
-      local enter = true
-      -- TODO need to look at modifiers the user provides. for now just above
-      -- print('mods:', vim.inspect(o.mods))
-      local split = 'above'
-      return {
-        buf = newbuf,
-        win = vim.api.nvim_open_win(newbuf, enter, {
-          split = split,
-          win = current.win,
-        }),
-      }
-    end)()
-
-    ---@type string[]
-    local cmd = (function()
-      if not vim.tbl_isempty(o.fargs) then return o.fargs end
-      local bvar = vim.b[current.buf].ferrum
-      if bvar == nil then
-        return vim.split(
-          vim.fn.input('> ', '', 'shellcmdline'),
-          '%s+',
-          { trimempty = true }
-        )
-      end
-      if type(bvar) == 'string' then
-        return vim.split(bvar, '%s+', { trimempty = true })
-      end
-      if type(bvar) == 'table' then return bvar end
-      error(('invalid b:ferrum value: %s'):format(vim.inspect(bvar)))
-    end)()
-
-    local ok, res = safe(Repl.spawn, repl.win, cmd)
-    if not ok then
-      pcall(vim.api.nvim_buf_delete, repl.buf, { force = true })
-      pcall(vim.api.nvim_win_close, repl.win, true)
-      vim.api.nvim_set_current_win(current.win)
-      ---@cast res string
-      vim.api.nvim_echo({ { res, 'ErrorMsg' } }, true, { err = true })
-      return
-    end
-    ---@type integer
-    local job = res
-    print((':!%s (job %d)'):format(vim.fn.join(cmd), job))
-
-    -- now we may jump back
-    local stay = o.bang
-    if stay then
-      vim.api.nvim_set_current_win(current.win)
-    else
-      vim.cmd.startinsert()
-    end
-
-    -- record info in source buffer, to be used by other commands in future
-    vim.b[current.buf].repl = {
-      buf = repl.buf,
-      win = repl.win,
-      job = job,
-      cmd = cmd,
-    }
-
-    -- record info in repl buffer, to be used by autocmds
-    vim.b[repl.buf].source = {
-      buf = current.buf,
-      win = current.win,
-      job = job,
-      cmd = cmd,
-    }
-
-    -- setup buffer-local REPL commands
-    buffer_local_commands_setup(current.buf)
-    autocmd_setup(repl.buf)
+    local ok, msg = safe(REPL, o)
+    if not ok then echoerr(msg) end
   end, {
     desc = 'Spawn a new REPL session',
     nargs = '*',
+    count = 0,
     complete = 'shellcmdline',
     bang = true,
+  })
+
+  -- Link this buffer to an existing REPL session
+  vim.api.nvim_create_user_command('LinkREPL', function(o)
+    local ok, msg = safe(LinkREPL, o)
+    if not ok then echoerr(msg) end
+  end, {
+    desc = 'Link to an existing REPL session',
+    nargs = '?',
+    complete = function(arglead, _, _)
+      ---@cast arglead string
+      return vim
+        .iter(pairs(Jobs.all()))
+        :filter(function(job, _)
+          ---@cast job integer
+          return vim.startswith(tostring(job), arglead)
+        end)
+        :map(function(job, record)
+          ---@cast job integer
+          ---@cast record JobRecord
+          return ('%d (!%s)'):format(job, vim.fn.join(record.cmd, ' '))
+        end)
+        :totable()
+    end,
   })
 end
 

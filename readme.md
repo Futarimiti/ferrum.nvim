@@ -18,10 +18,16 @@ See `:h ferrum.txt` for more details
 ## Plugin structure
 
 ```
-ferrum
+lua/ferrum
+├── autocmds
+│   └── buflocal.lua
+├── buffer.lua
+├── commands
+│   └── buflocal.lua
 ├── commands.lua
 ├── core.lua
 ├── init.lua
+├── jobs.lua
 └── util.lua
 ```
 

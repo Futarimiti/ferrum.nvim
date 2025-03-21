@@ -8,6 +8,7 @@ Licence: WTFPL
 CONTENTS					      *ferrum-contents*
 
 INTRODUCTION......................................|ferrum-introduction|
+EXAMPLE................................................|ferrum-example|
 CONFIGURATION....................................|ferrum-configuration|
 USAGE....................................................|ferrum-usage|
 PLUGIN STRUCTURE..............................|ferrum-plugin-structure|
@@ -15,9 +16,81 @@ PLUGIN STRUCTURE..............................|ferrum-plugin-structure|
 ==============================================================================
 INTRODUCTION					  *ferrum-introduction*
 
+Interact with REPL within working buffer.
+
 ferrum is named after `iron.nvim`. Like how iron stands for "Interactive REPL
 Over Neovim," ferrum goes by "Flexible Embedded REPL Runner for Unnecessary
 Multiprocessing."
+
+==============================================================================
+EXAMPLE						       *ferrum-example*
+
+------------------------------------------------------------------------------
+Starting
+
+Within `A.hs` buffer, run `:REPL ghci %` to start a GHCi session with `A.hs`
+loaded. This launches GHCi linked to `A.hs` buffer in a split window:
+>
+	+----------------------------------+
+	|-- ghci term buffer		   |
+	|ghci>				   |
+	|~				   |
+	|term://ghci=======================|
+	|-- file A.hs			   |
+	|~				   |
+	|A.hs==============================|
+	|				   |
+	+----------------------------------+
+<
+At the same time, several buffer-local commands are created in `A.hs` buffer
+to control the session:
+- |:SendlnREPL| (`:Sendln` if unambiguous) to send a single line.
+- `:[range]`|SendRangeREPL| (or `:SendRange`) to send multiple lines in buffer,
+  `:'<,'>SendRange` to send visual selected lines. NOTE: user may need to wrap
+  them with `:{` and `:}` in particular to GHCi.
+
+Try `:Sendln :t (>>=)` from `A.hs` buffer.
+
+GHCi uses `:r` to reload all loaded modules. To auto-reload modules on save,
+use
+>vim
+   autocmd BufWritePost *.hs,*.lhs silent! SendlnREPL :r
+<
+------------------------------------------------------------------------------
+Multi-client
+
+Each buffer controls only one REPL session, but an active session can be
+shared. Use |:LinkREPL| (`:Link` if unambiguous) to connect a buffer to an
+existing session. Think of language servers and clients.
+>
+   +------+
+   |	  |			  
+   | A.hs |	:Sendln 3 + 4	    +---------+ 
+   |	  | --------------------->  |	      |  
+   +------+			    | ghci    |  
+   +------+			    | session |  
+   |	  | --------------------->  |	      |
+   | B.hs |	    :Stop	    +---------+  
+   |	  |	   
+   +------+
+<
+Where commands from all clients affect the shared REPL, and terminating the
+session unlinks all clients.
+
+------------------------------------------------------------------------------
+Finishing
+
+|:StopREPL| (`:Stop` if unambiguous) in one of the client buffers finishes the
+linking session. Alternatively, the user may also |:bwipeout|! the REPL buffer
+or quit the session manually.
+
+Upon doing so, buffer-local commands to interact with the session are removed
+from each of client buffers.
+
+Note that |:hid|ing or |:quit|ing the REPL window does not terminate the
+session and the control from client buffers are not dropped. If the user
+accidentally closes the session window, use |:FocusREPL| (`:Focus` if
+unambiguous) to bring it back.
 
 ==============================================================================
 CONFIGURATION					 *ferrum-configuration*
@@ -32,31 +105,52 @@ ferrum supports no configuration yet.
 ==============================================================================
 USAGE							 *ferrum-usage*
 
+------------------------------------------------------------------------------
 Commands					      *ferrum-commands*
 
 							 *ferrum-:REPL*
-:REPL {command}		Start a REPL session for the current buffer in a new,
-			focused window.
+:[N]REPL {command}	Start a REPL session for buffer [N] in a new, focused
+			window. If [N] is not given, use the current buffer.
 
 			Can only split above currently.
 
 			Upon a successful invocation, `:REPL` creates sereval
-			buffer-local commands for the invoking buffer which
-			communicates with and controls the spawned session
-			(documented below). These commands will be deleted
-			when the REPL session finishes. `:REPL` is the only
-			command available at all time.
-			
-			One REPL session per buffer only. Calling `:REPL` on a
-			bound buffer does not spawn any new sessions, but
-			displays info about the current bound session.
+			|ferrum-buflocal-commands| on the invoking buffer
+			which communicates with and controls the spawned
+			session (documented below). These commands will be
+			deleted when the REPL session finishes.
 
-:REPL! {command}	Start a REPL session for the current buffer in a new,
-			unfocused window.
+			A REPL session could be controlled by multiple
+			buffers, but one REPL session per buffer only. Running
+			`:REPL` on a bound buffer unlinks current bound
+			session before a new one comes in.
+
+:[N]REPL! {command}	Start a REPL session for buffer [N] in a new,
+			unfocused window. if [N] is not given, use the current
+			buffer.
 
 							     *b:ferrum*
-:REPL[!]		With no arguments, |:REPL| the command given by
+:[N]REPL[!]		With no arguments, `:REPL` the command given by
 			|b:ferrum|. If not set, prompt for a shell command.
+
+						     *ferrum-:LinkREPL*
+:LinkREPL [job]		Connect current buffer to a running REPL session given
+			job id (tab-completion available), which may be
+			omitted when there is one and only one active REPL
+			session spawned by ferrum.
+
+			A buffer can only be linked to one session at a time;
+			linking to a new session automatically unlinks the
+			previous one.
+
+			|ferrum-buflocal-commands| will be defined. Or
+			redefined.
+
+------------------------------------------------------------------------------
+Buffer-local commands			     *ferrum-buflocal-commands*
+
+These commands will be set up by `:REPL` after successfully spawning a
+session. They are no longer available once the session finishes.
 
 						     *ferrum-:SendREPL*
 :SendREPL {text}	Send arbitrary text to the REPL session bound to the
@@ -83,18 +177,30 @@ Commands					      *ferrum-commands*
 			With [!] also |:startinsert|.
 
 						     *ferrum-:StopREPL*
-:StopREPL[!]		End the bound REPL session and delete the buffer-local
-			commands created by `:REPL` (including self). With [!]
+:StopREPL[!]		End the bound REPL session, and delete the
+			buffer-local commands created by `:REPL` (including
+			self) on all client buffers of this session. With [!]
 			also delete the terminal buffer and close the window.
+
+						   *ferrum-:UnlinkREPL*
+:UnlinkREPL		Detaches the bound REPL session from current buffer,
+			reverse of |ferrum-:LinkREPL|. Delete the buffer-local
+			commands created by `:REPL` (including self).
 
 ==============================================================================
 PLUGIN STRUCTURE			      *ferrum-plugin-structure*
 
 >
-    ferrum
+    lua/ferrum
+    ├── autocmds
+    │   └── buflocal.lua
+    ├── buffer.lua
+    ├── commands
+    │   └── buflocal.lua
     ├── commands.lua
     ├── core.lua
     ├── init.lua
+    ├── jobs.lua
     └── util.lua
 
 <

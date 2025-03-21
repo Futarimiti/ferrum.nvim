@@ -15,4 +15,9 @@ Util.safe = function(f, ...)
   end
 end
 
+---@param msg string
+Util.echoerr = function(msg)
+  vim.api.nvim_echo({ { msg, 'ErrorMsg' } }, true, { err = true })
+end
+
 return Util
