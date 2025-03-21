@@ -19,8 +19,6 @@ See `:h ferrum.txt` for more details
 
 ```
 lua/ferrum
-├── autocmds
-│   └── buflocal.lua
 ├── buffer.lua
 ├── commands
 │   └── buflocal.lua

@@ -195,8 +195,6 @@ PLUGIN STRUCTURE			      *ferrum-plugin-structure*
 
 >
     lua/ferrum
-    ├── autocmds
-    │   └── buflocal.lua
     ├── buffer.lua
     ├── commands
     │   └── buflocal.lua
@@ -205,7 +203,6 @@ PLUGIN STRUCTURE			      *ferrum-plugin-structure*
     ├── init.lua
     ├── jobs.lua
     └── util.lua
-
 <
 
 vim:tw=78:ts=8:noet:ft=help:norl:
