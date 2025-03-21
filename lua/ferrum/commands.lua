@@ -63,12 +63,17 @@ local get_cmd = function(o, buf)
     )
     print '' -- flush input line
     return ret
+  else
+    -- expand special keywords like % before use
+
+    ---@type string
+    local joined = type(bvar) == 'string' and bvar
+      or type(bvar) == 'table' and vim.fn.join(bvar, ' ')
+      or error(('invalid b:ferrum value: %s'):format(vim.inspect(bvar)))
+    ---@type string
+    local expanded = vim.fn.expandcmd(joined, { errmsg = true }) -- let it crash
+    return vim.split(expanded, '%s+', { trimempty = true })
   end
-  if type(bvar) == 'string' then
-    return vim.split(bvar, '%s+', { trimempty = true })
-  end
-  if type(bvar) == 'table' then return bvar end
-  error(('invalid b:ferrum value: %s'):format(vim.inspect(bvar)))
 end
 
 ---@param o vim.api.keyset.create_user_command.command_args

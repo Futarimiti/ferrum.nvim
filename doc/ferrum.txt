@@ -131,7 +131,10 @@ Commands					      *ferrum-commands*
 
 							     *b:ferrum*
 :[N]REPL[!]		With no arguments, `:REPL` the command given by
-			|b:ferrum|. If not set, prompt for a shell command.
+			`b:ferrum`. If not set, prompt for a shell command.
+
+			`b:ferrum` may be either a string or a list of strings.
+			Special keywords like `%` `%:h` will be expanded.
 
 						     *ferrum-:LinkREPL*
 :LinkREPL [job]		Connect current buffer to a running REPL session given
