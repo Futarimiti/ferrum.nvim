@@ -3,11 +3,12 @@ local M = {}
 -- Try to spawn a REPL session in given window and focus on it.
 ---@param win integer window id to spawn REPL in. Must contain an unmodified buffer
 ---@param cmd string[] shell command to run; use empty table to use b:repl
+---@param on_exit fun(job:integer,exitcode:integer,event:string)
 ---@return integer job
-M.spawn = function(win, cmd)
+M.spawn = function(win, cmd, on_exit)
   vim.api.nvim_set_current_win(win)
   -- this spawns in current buffer
-  local job = vim.fn.jobstart(cmd, { term = true })
+  local job = vim.fn.jobstart(cmd, { term = true, on_exit = on_exit })
   assert(job ~= 0 and job ~= -1, 'failing to spawn job')
   return job
 end

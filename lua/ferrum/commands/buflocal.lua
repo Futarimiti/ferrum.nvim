@@ -88,7 +88,7 @@ local commands = {
     local cmd = vim.fn.join(args.cmd, ' ')
     return {
       callback = function(o)
-        Repl.stop(job) -- should trigger TermClose which frees all clients
+        Repl.stop(job) -- triggers on_exit which frees all clients
         if o.bang then
           -- if opened in a window that should also be closed
           pcall(vim.api.nvim_buf_delete, repl_buf, { force = true })

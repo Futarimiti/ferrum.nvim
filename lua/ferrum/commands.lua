@@ -2,9 +2,8 @@ local Jobs = require 'ferrum.jobs'
 local Util = require 'ferrum.util'
 local safe = Util.safe
 local echoerr = Util.echoerr
-local Repl = require 'ferrum.core'
-local Autocmds = { Buflocal = require 'ferrum.autocmds.buflocal' }
 local Buffer = require 'ferrum.buffer'
+local Repl = require 'ferrum.core'
 
 local Commands = {}
 
@@ -15,9 +14,16 @@ Commands.Buflocal = require 'ferrum.commands.buflocal'
 ---@param split_direction ('above'|'below'|'left'|'right')
 ---@param cmd string[]
 ---@param focus boolean focus in the new split?
+---@param on_exit fun(job:integer,exitcode:integer,event:string)
 ---@return integer job
 ---@return integer repl buffer
-local spawn_repl_session = function(source_win, split_direction, cmd, focus)
+local spawn_repl_session = function(
+  source_win,
+  split_direction,
+  cmd,
+  focus,
+  on_exit
+)
   local buf = vim.api.nvim_create_buf(true, true)
   local win = vim.api.nvim_open_win(
     buf,
@@ -25,7 +31,7 @@ local spawn_repl_session = function(source_win, split_direction, cmd, focus)
     { split = split_direction, win = source_win }
   )
 
-  local ok, job = safe(Repl.spawn, win, cmd)
+  local ok, job = safe(Repl.spawn, win, cmd, on_exit)
   if not ok then
     vim.api.nvim_buf_delete(buf, { force = true })
     vim.api.nvim_set_current_win(source_win)
@@ -91,8 +97,23 @@ local REPL = function(o)
   local cmd = get_cmd(o, source.buf)
   local focus = not o.bang
 
-  local job, repl_buf =
-    spawn_repl_session(source.win, split_direction, cmd, focus)
+  local job, repl_buf = spawn_repl_session(
+    source.win,
+    split_direction,
+    cmd,
+    focus,
+    function(job, _, _)
+      vim.notify(
+        ('Finished: !%s (job %d)'):format(vim.fn.join(cmd, ' '), job),
+        vim.log.levels.INFO
+      )
+      vim.iter(assert(Jobs.get(job)).clients):each(function(client)
+        ---@cast client integer
+        Buffer.free(client, false, true)
+      end)
+    end
+  )
+
   vim.notify(
     (':!%s (job %d)'):format(vim.fn.join(cmd), job),
     vim.log.levels.INFO
@@ -107,13 +128,6 @@ local REPL = function(o)
   vim.b[source.buf].ferrum_job = job
 
   Commands.Buflocal.setup {
-    client = source.buf,
-    repl = repl_buf,
-    cmd = cmd,
-    job = job,
-  }
-
-  Autocmds.Buflocal.create {
     client = source.buf,
     repl = repl_buf,
     cmd = cmd,
@@ -172,13 +186,6 @@ local LinkREPL = function(o)
   vim.b[source_buf].ferrum_job = job
 
   Commands.Buflocal.setup {
-    client = source_buf,
-    repl = repl_buf,
-    cmd = cmd,
-    job = job,
-  }
-
-  Autocmds.Buflocal.create {
     client = source_buf,
     repl = repl_buf,
     cmd = cmd,
