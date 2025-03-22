@@ -185,7 +185,8 @@ local LinkREPL = function(o)
 end
 
 -- Set up :REPL and :LinkREPL command.
-Commands.setup = function()
+---@param _ ferrum.Config
+Commands.setup = function(_)
   -- Spawn REPL session in a split
   -- unless the buffer is alreadys bound with a REPL buffer
   vim.api.nvim_create_user_command('REPL', function(o)
