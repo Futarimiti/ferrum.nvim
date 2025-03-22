@@ -13,7 +13,7 @@ USAGE....................................................|ferrum-usage|
 PLUGIN STRUCTURE..............................|ferrum-plugin-structure|
 
 ==============================================================================
-INTRODUCTION					               *ferrum*
+INTRODUCTION						       *ferrum*
 
 Interact with REPL within working buffer.
 
@@ -133,10 +133,13 @@ PLUGIN STRUCTURE			      *ferrum-plugin-structure*
     ├── commands
     │   └── buflocal.lua
     ├── commands.lua
+    ├── config.lua
     ├── core.lua
     ├── init.lua
     ├── jobs.lua
     └── util.lua
+
+2 directories, 8 files
 <
 
 vim:tw=78:ts=8:noet:ft=help:norl:
