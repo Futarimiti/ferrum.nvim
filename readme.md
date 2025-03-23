@@ -165,6 +165,14 @@ dispatch influences several design choices in ferrum.
 Additionally I anticipate more integrations
 till ferrum eventually becomes an extension of it.
 
+#### [slime.vim](https://github.com/jpalardy/vim-slime)
+
+Well that's awkward. I entirely didn't hear slime until now
+I have finished the whole thing, just to find out
+what I have done was done years before with 5x times better.
+Change of plan: use slime for a while then think of
+any improvements to make.
+
 ## Licence
 
 WTFPL
