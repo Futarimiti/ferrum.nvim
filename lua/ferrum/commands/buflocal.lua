@@ -9,7 +9,7 @@ local Buflocal = {}
 
 -- All buflocal commands: names to definitions.
 -- Some of these throw errors - might need to wrap a bit before turning them into commands.
----@type table<string,BuflocalCommandsDefinitionFunc>
+---@type table<string,ferrum.buflocal.commands.definition>
 local commands = {
   SendREPL = function(args)
     local job = args.job
@@ -129,11 +129,11 @@ Buflocal.cleanup = function(buf, tolerate)
 end
 
 -- Create buflocal commands on given client buffer.
----@param args BuflocalCommandsSetupArgs
+---@param args ferrum.buflocal.commands.setup.args
 Buflocal.setup = function(args)
   vim.iter(pairs(commands)):each(
     ---@param name string
-    ---@param define BuflocalCommandsDefinitionFunc
+    ---@param define ferrum.buflocal.commands.definition
     function(name, define)
       local definition = define(args)
       local callback, opts = definition.callback, definition.opts
@@ -156,5 +156,5 @@ end
 
 return Buflocal
 
----@alias BuflocalCommandsSetupArgs {client:integer,repl:integer,job:integer,cmd:string[]}
----@alias BuflocalCommandsDefinitionFunc fun(args:BuflocalCommandsSetupArgs):{callback:fun(o:vim.api.keyset.create_user_command.command_args),opts:vim.api.keyset.user_command}
+---@alias ferrum.buflocal.commands.setup.args {client:integer,repl:integer,job:integer,cmd:string[]}
+---@alias ferrum.buflocal.commands.definition fun(args:ferrum.buflocal.commands.setup.args):{callback:fun(o:vim.api.keyset.create_user_command.command_args),opts:vim.api.keyset.user_command}
