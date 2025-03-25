@@ -40,4 +40,24 @@ Buffer.free = function(buf, notify, tolerate)
   end
 end
 
+-- Like `vim.bo[buf].channel` but with explicit nil returns.
+---@param buf integer
+---@return integer?
+Buffer.get_job = function(buf)
+  if not vim.api.nvim_buf_is_valid(buf) then
+    error(('invalid buffer: %d'):format(buf))
+  end
+  local chan = vim.bo[buf].channel
+  if chan ~= 0 then return chan end
+end
+
+---@param buf integer
+---@return boolean
+Buffer.is_terminal = function(buf)
+  if not vim.api.nvim_buf_is_valid(buf) then
+    error(('invalid buffer: %d'):format(buf))
+  end
+  return vim.bo[buf].buftype == 'terminal'
+end
+
 return Buffer
