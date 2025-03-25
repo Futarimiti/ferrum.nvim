@@ -6,6 +6,26 @@ local jobs = {}
 
 local Jobs = {}
 
+-- List all active terminal jobs that are connected to a buffer.
+---@return table<integer,{cmd:string,buf:integer}> table mapping job id to info
+---@deprecated Leave it for now
+Jobs.all = function()
+  return vim.iter(vim.api.nvim_list_chans()):fold({}, function(acc, chaninfo)
+    if
+      chaninfo.buffer ~= nil and chaninfo.pty ~= '' -- pty empty when job done
+    then
+      acc[chaninfo.id] = {
+        buf = chaninfo.buffer,
+        -- argv got to be non-nil right? ...right?
+        cmd = chaninfo.argv and chaninfo.argv[#chaninfo.argv] or '--No cmd--',
+      }
+    end
+    return acc
+  end)
+end
+
+--- DEPRECATED
+
 -- Allow any arbitrary mutation on jobs db.
 -- If the given function returns anything, return it.
 ---@generic T
@@ -13,12 +33,6 @@ local Jobs = {}
 ---@return T
 ---@deprecated
 Jobs.mut = function(f) return f(jobs) end
-
----@return Jobs
----@deprecated
-Jobs.all = function()
-  return Jobs.mut(function(jobs_) return jobs_ end)
-end
 
 ---@param job integer
 ---@return JobRecord?
