@@ -13,7 +13,7 @@ local Buflocal = {}
 local commands = {
   SendREPL = function(args)
     local job = args.job
-    local cmd = vim.fn.join(args.cmd, ' ')
+    local cmd = vim.fn.join(args.cmd)
     return {
       callback = function(o) Repl.send(job, o.args) end,
       opts = {
@@ -24,7 +24,7 @@ local commands = {
   end,
   SendlnREPL = function(args)
     local job = args.job
-    local cmd = vim.fn.join(args.cmd, ' ')
+    local cmd = vim.fn.join(args.cmd)
     return {
       callback = function(o) Repl.sendln(job, o.args) end,
       opts = {
@@ -35,7 +35,7 @@ local commands = {
   end,
   SendRangeREPL = function(args)
     local job = args.job
-    local cmd = vim.fn.join(args.cmd, ' ')
+    local cmd = vim.fn.join(args.cmd)
     return {
       callback = function(o)
         local lines = vim.fn.getline(o.line1, o.line2)
@@ -53,7 +53,7 @@ local commands = {
   end,
   FocusREPL = function(args)
     local job = args.job
-    local cmd = vim.fn.join(args.cmd, ' ')
+    local cmd = vim.fn.join(args.cmd)
     local repl_buf = args.repl
     return {
       callback = function(o)
@@ -83,7 +83,7 @@ local commands = {
   StopREPL = function(args)
     local repl_buf = args.repl
     local job = args.job
-    local cmd = vim.fn.join(args.cmd, ' ')
+    local cmd = vim.fn.join(args.cmd)
     return {
       callback = function(o)
         Repl.stop(job) -- triggers on_exit which frees all clients
@@ -104,7 +104,7 @@ local commands = {
   UnlinkREPL = function(args)
     local client_buf = args.client
     local job = args.job
-    local cmd = vim.fn.join(args.cmd, ' ')
+    local cmd = vim.fn.join(args.cmd)
     return {
       callback = function(_)
         -- lazy loading to avoid cyclic dependency
