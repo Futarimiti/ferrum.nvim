@@ -5,8 +5,10 @@ local echoerr = Util.echoerr
 local Buffer = require 'ferrum.buffer'
 local Repl = require 'ferrum.core'
 
-local Commands = {}
+local Autocmds = {}
+Autocmds.Buflocal = require 'ferrum.autocmds.buflocal'
 
+local Commands = {}
 Commands.Buflocal = require 'ferrum.commands.buflocal'
 
 -- Spawn a REPL session in a new split, relative to source win.
@@ -65,7 +67,7 @@ local get_cmd = function(o, buf)
 
     ---@type string
     local joined = type(bvar) == 'string' and bvar
-      or type(bvar) == 'table' and vim.fn.join(bvar, ' ')
+      or type(bvar) == 'table' and vim.fn.join(bvar)
       or error(('invalid b:ferrum value: %s'):format(vim.inspect(bvar)))
     ---@type string
     local expanded = vim.fn.expandcmd(joined, { errmsg = true }) -- let it crash
@@ -92,29 +94,13 @@ local REPL = function(o)
     o.mods,
     cmd,
     focus,
-    function(job, _, _)
-      vim.notify(
-        ('Finished: !%s (job %d)'):format(vim.fn.join(cmd, ' '), job),
-        vim.log.levels.INFO
-      )
-      vim.iter(assert(Jobs.get(job)).clients):each(function(client)
-        ---@cast client integer
-        Buffer.free(client, false, true)
-      end)
-      Jobs.del(job)
-    end
+    function(_, _, _) end
   )
 
   vim.notify(
     (':!%s (job %d)'):format(vim.fn.join(cmd), job),
     vim.log.levels.INFO
   )
-
-  Jobs.set(job, {
-    clients = { source.buf },
-    repl = repl_buf,
-    cmd = cmd,
-  })
 
   vim.b[source.buf].ferrum_job = job
 
@@ -124,16 +110,23 @@ local REPL = function(o)
     cmd = cmd,
     job = job,
   }
+
+  Autocmds.Buflocal.setup {
+    client = source.buf,
+    repl = repl_buf,
+    cmd = cmd,
+    job = job,
+  }
 end
 
 ---@param o vim.api.keyset.create_user_command.command_args
 ---@return integer job
----@return JobRecord job record
+---@return JobInfo job info
 local get_target_job = function(o)
   if o.args == '' then
     local jobs = Jobs.all()
     if vim.tbl_isempty(jobs) then
-      error 'no ferrum jobs'
+      error 'no active jobs'
     elseif vim.tbl_count(jobs) == 1 then
       ---@type integer
       local job = vim.tbl_keys(jobs)[1]
@@ -141,9 +134,9 @@ local get_target_job = function(o)
     else
       local job
       vim.ui.select(vim.tbl_keys(jobs), {
-        prompt = 'Select ferrum session:',
+        prompt = 'Select session:',
         format_item = function(j)
-          return ('job #%d (!%s)'):format(j, vim.fn.join(jobs[j].cmd, ' '))
+          return ('job #%d (!%s)'):format(j, jobs[j].cmd)
         end,
       }, function(item, _)
         ---@cast item integer?
@@ -158,28 +151,33 @@ local get_target_job = function(o)
       job >= 0 and job % 1 == 0,
       ('positive integer required: %d'):format(job)
     )
-    local record = assert(Jobs.get(job), ('invalid job #%d').format(job))
-    return job, record
+    local info = assert(Jobs.all()[job], ('invalid job #%d'):format(job))
+    return job, info
   end
 end
 
 ---@param o vim.api.keyset.create_user_command.command_args
 local LinkREPL = function(o)
   local source_buf = vim.api.nvim_get_current_buf()
-  local job, record = get_target_job(o)
-  local repl_buf = record.repl
-  local cmd = record.cmd
+  local job, info = get_target_job(o)
+  local repl_buf = info.buf
+  local cmd = info.cmd
 
   Buffer.free(source_buf, true)
-
-  Jobs.link(job, source_buf)
 
   vim.b[source_buf].ferrum_job = job
 
   Commands.Buflocal.setup {
     client = source_buf,
     repl = repl_buf,
-    cmd = cmd,
+    cmd = vim.split(cmd, '%s+', { trimempty = true }),
+    job = job,
+  }
+
+  Autocmds.Buflocal.setup {
+    client = source_buf,
+    repl = repl_buf,
+    cmd = vim.split(cmd, '%s+', { trimempty = true }),
     job = job,
   }
 end
@@ -210,14 +208,11 @@ Commands.setup = function()
       ---@cast arglead string
       return vim
         .iter(pairs(Jobs.all()))
-        :filter(function(job, _)
+        :map(function(job, info)
           ---@cast job integer
-          return vim.startswith(tostring(job), arglead)
-        end)
-        :map(function(job, record)
-          ---@cast job integer
-          ---@cast record JobRecord
-          return ('%d (!%s)'):format(job, vim.fn.join(record.cmd, ' '))
+          ---@cast info JobInfo
+          if not vim.startswith(tostring(job), arglead) then return nil end
+          return ('%d (!%s)'):format(job, info.cmd)
         end)
         :totable()
     end,
