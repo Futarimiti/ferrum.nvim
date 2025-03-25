@@ -18,7 +18,7 @@ Commands.Buflocal = require 'ferrum.commands.buflocal'
 ---@param focus boolean focus in the new split?
 ---@param on_exit fun(job:integer,exitcode:integer,event:string)
 ---@return integer job
----@return integer repl buffer
+---@return JobInfo info
 local spawn_repl_session = function(source_win, mods, cmd, focus, on_exit)
   vim.cmd(mods .. ' new') -- XXX
   local buf = vim.api.nvim_get_current_buf()
@@ -38,12 +38,12 @@ local spawn_repl_session = function(source_win, mods, cmd, focus, on_exit)
     vim.cmd.startinsert()
   else
     ---@diagnostic disable-next-line: param-type-mismatch
-    vim.fn.cursor('$', 0)
+    vim.fn.cursor('$', 0) -- XXX makes repl scroll automatically
     vim.api.nvim_set_current_win(source_win) -- jump back
   end
 
   ---@cast job integer
-  return job, buf
+  return job, { buf = buf, cmd = vim.fn.join(cmd) }
 end
 
 -- Determine which shell command to run.
@@ -60,7 +60,6 @@ local get_cmd = function(o, buf)
       '%s+',
       { trimempty = true }
     )
-    print '' -- flush input line
     return ret
   else
     -- expand special keywords like % before use
@@ -73,50 +72,6 @@ local get_cmd = function(o, buf)
     local expanded = vim.fn.expandcmd(joined, { errmsg = true }) -- let it crash
     return vim.split(expanded, '%s+', { trimempty = true })
   end
-end
-
----@param o vim.api.keyset.create_user_command.command_args
-local REPL = function(o)
-  local source = {
-    buf = o.count == 0 and vim.api.nvim_get_current_buf()
-      or vim.api.nvim_buf_is_valid(o.count) and o.count
-      or error(('invalid buffer: %d'):format(o.count)),
-    win = vim.api.nvim_get_current_win(),
-  }
-
-  Buffer.free(source.buf, true)
-
-  local cmd = get_cmd(o, source.buf)
-  local focus = not o.bang
-
-  local job, repl_buf = spawn_repl_session(
-    source.win,
-    o.mods,
-    cmd,
-    focus,
-    function(_, _, _) end
-  )
-
-  vim.notify(
-    (':!%s (job %d)'):format(vim.fn.join(cmd), job),
-    vim.log.levels.INFO
-  )
-
-  vim.b[source.buf].ferrum_job = job
-
-  Commands.Buflocal.setup {
-    client = source.buf,
-    repl = repl_buf,
-    cmd = cmd,
-    job = job,
-  }
-
-  Autocmds.Buflocal.setup {
-    client = source.buf,
-    repl = repl_buf,
-    cmd = cmd,
-    job = job,
-  }
 end
 
 ---@param o vim.api.keyset.create_user_command.command_args
@@ -146,7 +101,8 @@ local get_target_job = function(o)
     end
   else
     local arg1 = vim.split(o.args, '%s+')[1]
-    local job = assert(tonumber(arg1), ('not an integer: %s'):format(arg1))
+    local job =
+      assert(tonumber(arg1), ('not an integer: %s'):format(vim.inspect(arg1)))
     assert(
       job >= 0 and job % 1 == 0,
       ('positive integer required: %d'):format(job)
@@ -156,30 +112,64 @@ local get_target_job = function(o)
   end
 end
 
----@param o vim.api.keyset.create_user_command.command_args
-local LinkREPL = function(o)
-  local source_buf = vim.api.nvim_get_current_buf()
-  local job, info = get_target_job(o)
+---@param source integer
+---@param job integer
+---@param info JobInfo
+local link_repl = function(source, job, info)
+  local cmd = vim.split(info.cmd, '%s+', { trimempty = true })
   local repl_buf = info.buf
-  local cmd = info.cmd
 
-  Buffer.free(source_buf, true)
+  Buffer.free(source, true)
 
-  vim.b[source_buf].ferrum_job = job
+  vim.b[source].ferrum_job = job
 
   Commands.Buflocal.setup {
-    client = source_buf,
+    client = source,
     repl = repl_buf,
-    cmd = vim.split(cmd, '%s+', { trimempty = true }),
+    cmd = cmd,
     job = job,
   }
 
   Autocmds.Buflocal.setup {
-    client = source_buf,
+    client = source,
     repl = repl_buf,
-    cmd = vim.split(cmd, '%s+', { trimempty = true }),
+    cmd = cmd,
     job = job,
   }
+end
+
+---@param o vim.api.keyset.create_user_command.command_args
+local LinkREPL = function(o)
+  local job, info = get_target_job(o)
+  link_repl(vim.api.nvim_get_current_buf(), job, info)
+end
+
+---@param o vim.api.keyset.create_user_command.command_args
+local REPL = function(o)
+  local source = {
+    buf = o.count == 0 and vim.api.nvim_get_current_buf()
+      or vim.api.nvim_buf_is_valid(o.count) and o.count
+      or error(('invalid buffer: %d'):format(o.count)),
+    win = vim.api.nvim_get_current_win(),
+  }
+
+  local cmd = get_cmd(o, source.buf)
+  local focus = not o.bang
+
+  local job, info = spawn_repl_session(
+    source.win,
+    o.mods,
+    cmd,
+    focus,
+    function(_, _, _) end
+  )
+
+  vim.notify(
+    (':!%s (job %d)'):format(vim.fn.join(cmd), job),
+    vim.log.levels.INFO
+  )
+
+  link_repl(source.buf, job, info)
 end
 
 -- Set up :REPL and :LinkREPL command.
@@ -206,7 +196,7 @@ Commands.setup = function()
     nargs = '?',
     complete = function(arglead, _, _)
       ---@cast arglead string
-      return vim
+      local ret = vim
         .iter(pairs(Jobs.all()))
         :map(function(job, info)
           ---@cast job integer
@@ -215,6 +205,10 @@ Commands.setup = function()
           return ('%d (!%s)'):format(job, info.cmd)
         end)
         :totable()
+      if vim.tbl_isempty(ret) then
+        vim.notify('No active terminal sessions', vim.log.levels.ERROR)
+      end
+      return ret
     end,
   })
 end
