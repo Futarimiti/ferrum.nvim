@@ -83,6 +83,10 @@ Commands					      *ferrum-commands*
 			|ferrum-buflocal-commands| will be defined. Or
 			redefined.
 
+`:REPL` is just a shortcut to spawn a session then `:LinkREPL` to its job id.
+Manually spawning a session (e.g. with |:term| or |:Start|) and link to it has
+the exact same effect.
+
 ------------------------------------------------------------------------------
 Buffer-local commands			     *ferrum-buflocal-commands*
 
@@ -117,7 +121,8 @@ session. They are no longer available once the session finishes.
 :StopREPL[!]		End the bound REPL session, and delete the
 			buffer-local commands created by `:REPL` (including
 			self) on all client buffers of this session. With [!]
-			also delete the terminal buffer and close the window.
+			also delete the terminal buffer and close the window,
+			if not already.
 
 						   *ferrum-:UnlinkREPL*
 :UnlinkREPL		Detaches the bound REPL session from current buffer,
@@ -128,15 +133,17 @@ session. They are no longer available once the session finishes.
 PLUGIN STRUCTURE			      *ferrum-plugin-structure*
 
 >
-    lua/ferrum
-    ├── buffer.lua
-    ├── commands
-    │   └── buflocal.lua
-    ├── commands.lua
-    ├── config.lua
-    ├── core.lua
-    ├── init.lua
-    ├── jobs.lua
+    lua/ferrum/										  
+    ├── autocmds									  
+    │   └── buflocal.lua								  
+    ├── buffer.lua									  
+    ├── commands									  
+    │   └── buflocal.lua								  
+    ├── commands.lua									  
+    ├── config.lua									  
+    ├── core.lua									  
+    ├── init.lua									  
+    ├── jobs.lua									  
     └── util.lua
 <
 
