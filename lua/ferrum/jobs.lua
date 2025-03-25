@@ -11,19 +11,23 @@ local Jobs = {}
 ---@generic T
 ---@param f fun(_:Jobs): T
 ---@return T
+---@deprecated
 Jobs.mut = function(f) return f(jobs) end
 
 ---@return Jobs
+---@deprecated
 Jobs.all = function()
   return Jobs.mut(function(jobs_) return jobs_ end)
 end
 
 ---@param job integer
 ---@return JobRecord?
+---@deprecated
 Jobs.get = function(job) return Jobs.all()[job] end
 
 ---@param job integer
 ---@param record JobRecord
+---@deprecated
 Jobs.set = function(job, record)
   Jobs.mut(function(jobs_)
     jobs_[job] = record
@@ -32,6 +36,7 @@ Jobs.set = function(job, record)
 end
 
 ---@param job integer
+---@deprecated
 Jobs.del = function(job)
   ---@diagnostic disable-next-line: param-type-mismatch
   Jobs.set(job, nil)
@@ -40,11 +45,13 @@ end
 -- Make {client} a client of {job}
 ---@param job integer
 ---@param client integer
+---@deprecated
 Jobs.link = function(job, client) table.insert(jobs[job].clients, client) end
 
 -- Make {client} no longer a client of {job}
 ---@param job integer
 ---@param client integer
+---@deprecated
 Jobs.unlink = function(job, client)
   local clients = jobs[job].clients
   jobs[job].clients = vim
