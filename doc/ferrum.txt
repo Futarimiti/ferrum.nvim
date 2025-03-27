@@ -130,7 +130,7 @@ session. They are no longer available once the session finishes.
 			commands created by `:REPL` (including self).
 
 ------------------------------------------------------------------------------
-User autocmds			                 *ferrum-user-autocmds*
+User autocmds					 *ferrum-user-autocmds*
 
 ferrum offers several autocmds:
 >
@@ -146,10 +146,10 @@ FerrumBuflocalCommandsSetupPost
 
 			A table with these keys will be passed as
 			|event-data|:
-                        • client: (integer) client buffer id
-                        • repl: (integer) REPL buffer id
-                        • job: (integer) job id
-                        • cmd: (string[]) shell command executed
+			• client: (integer) client buffer id
+			• repl: (integer) REPL buffer id
+			• job: (integer) job id
+			• cmd: (string[]) shell command executed
 
 				     *FerrumBuflocalCommandsCleanupPre*
 				    *FerrumBuflocalCommandsCleanupPost*
@@ -160,10 +160,10 @@ FerrumBuflocalCommandsCleanupPost
 
 			A table with these keys will be passed as
 			|event-data|:
-                        • buf: (integer) target buffer id
+			• buf: (integer) target buffer id
 
-				  		    *FerrumLinkREPLPre*
-				  		   *FerrumLinkREPLPost*
+						    *FerrumLinkREPLPre*
+						   *FerrumLinkREPLPost*
 FerrumLinkREPLPre
 FerrumLinkREPLPost
 			Before and after ferrum links a client buffer to a
@@ -171,48 +171,49 @@ FerrumLinkREPLPost
 
 			A table with these keys will be passed as
 			|event-data|:
-                        • client: (integer) client buffer id
-                        • repl: (integer) REPL buffer id
-                        • job: (integer) job id
-                        • cmd: (string[]) shell command executed
+			• client: (integer) client buffer id
+			• repl: (integer) REPL buffer id
+			• job: (integer) job id
+			• cmd: (string[]) shell command executed
 
-				  		  *FerrumSpawnREPLPost*
-FerrumSpawnREPLPost     After ferrum successfully spawns a REPL session.
+						  *FerrumSpawnREPLPost*
+FerrumSpawnREPLPost	After ferrum successfully spawns a REPL session.
 
 			A table with these keys will be passed as
 			|event-data|:
-                        • client: (integer) client buffer id
-                        • repl: (integer) REPL buffer id
-                        • job: (integer) job id
-                        • cmd: (string[]) shell command executed
+			• client: (integer) client buffer id
+			• repl: (integer) REPL buffer id
+			• job: (integer) job id
+			• cmd: (string[]) shell command executed
 
-				  		 *FerrumFinishREPLPost*
-FerrumFinishREPLPost    After finishing a REPL session, one that was previous
+						 *FerrumFinishREPLPost*
+FerrumFinishREPLPost	After finishing a REPL session, one that was previous
 			linked to a client.
 
 			A table with these keys will be passed as
 			|event-data|:
-                        • client: (integer) client buffer id, which this
+			• client: (integer) client buffer id, which this
 			  session has been linked to
-                        • repl: (integer) REPL buffer id
-                        • job: (integer) job id
-                        • cmd: (string[]) shell command executed
+			• repl: (integer) REPL buffer id
+			• job: (integer) job id
+			• cmd: (string[]) shell command executed
 
 ==============================================================================
 PLUGIN STRUCTURE			      *ferrum-plugin-structure*
 
 >
-    lua/ferrum/										  
-    ├── autocmds									  
-    │   └── buflocal.lua								  
-    ├── buffer.lua									  
-    ├── commands									  
-    │   └── buflocal.lua								  
-    ├── commands.lua									  
-    ├── config.lua									  
-    ├── core.lua									  
-    ├── init.lua									  
-    ├── jobs.lua									  
+    lua/ferrum/
+    ├── autocmds
+    │   ├── buflocal.lua
+    │   └── user.lua
+    ├── buffer.lua
+    ├── commands
+    │   └── buflocal.lua
+    ├── commands.lua
+    ├── config.lua
+    ├── core.lua
+    ├── init.lua
+    ├── jobs.lua
     └── util.lua
 <
 
