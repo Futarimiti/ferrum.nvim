@@ -11,8 +11,15 @@ Jobs.all = function()
     then
       acc[chaninfo.id] = {
         buf = chaninfo.buffer,
-        -- argv got to be non-nil right? ...right?
-        cmd = chaninfo.argv and chaninfo.argv[#chaninfo.argv] or '--No cmd--',
+        cmd = (function()
+          local argv = chaninfo.argv
+          if argv == nil or vim.tbl_isempty(argv) then
+            -- argv got to be non-nil right? ...right?
+            return '--No cmd--'
+          end
+          argv[1] = vim.fn.fnamemodify(argv[1], ':t')
+          return vim.fn.join(argv)
+        end)(),
       }
     end
     return acc

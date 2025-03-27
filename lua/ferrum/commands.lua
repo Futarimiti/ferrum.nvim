@@ -7,15 +7,16 @@ local Repl = require 'ferrum.core'
 
 local Autocmds = {}
 Autocmds.Buflocal = require 'ferrum.autocmds.buflocal'
+Autocmds.User = require 'ferrum.autocmds.user'
 
 local Commands = {}
 Commands.Buflocal = require 'ferrum.commands.buflocal'
 
--- Spawn a REPL session in a new split, relative to source win.
+-- Spawn a REPL session in a new window.
 ---@param source_win integer
 ---@param mods string `<mods>`; modifiers for opening the new window
 ---@param cmd string[]
----@param focus boolean focus in the new split?
+---@param focus boolean focus on the new split?
 ---@param on_exit fun(job:integer,exitcode:integer,event:string)
 ---@return integer job
 ---@return JobInfo info
@@ -33,6 +34,13 @@ local spawn_repl_session = function(source_win, mods, cmd, focus, on_exit)
     local msg = job
     error(msg)
   end
+
+  Autocmds.User.fire.FerrumSpawnREPLPost {
+    repl = buf,
+    cmd = cmd,
+    job = job,
+    client = vim.api.nvim_win_get_buf(source_win),
+  }
 
   if focus then
     vim.cmd.startinsert()
@@ -119,23 +127,22 @@ local link_repl = function(source, job, info)
   local cmd = vim.split(info.cmd, '%s+', { trimempty = true })
   local repl_buf = info.buf
 
+  local o = {
+    client = source,
+    repl = repl_buf,
+    job = job,
+    cmd = cmd,
+  }
+
+  Autocmds.User.fire.FerrumLinkREPLPre(o)
+
   Buffer.free(source, true)
 
   vim.b[source].ferrum_job = job
 
-  Commands.Buflocal.setup {
-    client = source,
-    repl = repl_buf,
-    cmd = cmd,
-    job = job,
-  }
-
-  Autocmds.Buflocal.setup {
-    client = source,
-    repl = repl_buf,
-    cmd = cmd,
-    job = job,
-  }
+  Commands.Buflocal.setup(o)
+  Autocmds.Buflocal.setup(o)
+  Autocmds.User.fire.FerrumLinkREPLPost(o)
 end
 
 ---@param o vim.api.keyset.create_user_command.command_args

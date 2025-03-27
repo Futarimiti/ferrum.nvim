@@ -1,5 +1,6 @@
 -- Buflocal commands setup & de-setup
 
+local Autocmds = require 'ferrum.autocmds.user'
 local Repl = require 'ferrum.core'
 local Util = require 'ferrum.util'
 local safe = Util.safe
@@ -123,14 +124,17 @@ Buflocal.cleanup = function(buf, tolerate)
     if not tolerate then error(('invalid buffer: %d'):format(buf)) end
     return
   end
+  Autocmds.fire.FerrumBuflocalCommandsCleanupPre { buf = buf }
   vim.iter(vim.tbl_keys(commands)):each(
     function(command) pcall(vim.api.nvim_buf_del_user_command, buf, command) end
   )
+  Autocmds.fire.FerrumBuflocalCommandsCleanupPost { buf = buf }
 end
 
 -- Create buflocal commands on given client buffer.
 ---@param args ferrum.buflocal.commands.setup.args
 Buflocal.setup = function(args)
+  Autocmds.fire.FerrumBuflocalCommandsSetupPre(args)
   vim.iter(pairs(commands)):each(
     ---@param name string
     ---@param define ferrum.buflocal.commands.definition
@@ -152,6 +156,7 @@ Buflocal.setup = function(args)
       )
     end
   )
+  Autocmds.fire.FerrumBuflocalCommandsSetupPost(args)
 end
 
 return Buflocal

@@ -6,7 +6,8 @@ local Buffer = {}
 ---@param buf integer client buffer
 ---@param say_something? boolean should be self explaining
 ---@param tolerate? boolean tolerate invalid buffer?
-Buffer.free = function(buf, say_something, tolerate)
+---@param target_job? integer only free the buffer if it's linking to this job
+Buffer.free = function(buf, say_something, tolerate, target_job)
   if not vim.api.nvim_buf_is_valid(buf) then
     if tolerate then
       return
@@ -15,17 +16,23 @@ Buffer.free = function(buf, say_something, tolerate)
     end
   end
 
-  -- 1. cleanup buflocal commands
-  Commands.Buflocal.cleanup(buf)
-
-  -- 2. set b:ferrum_job to nil
+  ---@type integer?
   local old_job = vim.b[buf].ferrum_job
+  if target_job ~= nil and target_job ~= old_job then
+    -- not this job; do nothing
+    return
+  end
+
+  -- 1. set b:ferrum_job to nil
   if old_job ~= nil then
     vim.b[buf].ferrum_job = nil
     if say_something then
       vim.notify(('Unlinked job #%d'):format(old_job), vim.log.levels.INFO)
     end
   end
+
+  -- 2. cleanup buflocal commands
+  Commands.Buflocal.cleanup(buf)
 end
 
 -- Like `vim.bo[buf].channel` but with explicit nil returns.

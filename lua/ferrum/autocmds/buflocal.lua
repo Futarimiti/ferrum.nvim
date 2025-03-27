@@ -1,5 +1,7 @@
 -- Buflocal autocmds setup
 
+local User = require 'ferrum.autocmds.user'
+
 local M = {}
 
 local group = vim.api.nvim_create_augroup('ferrum-repl', {})
@@ -12,21 +14,34 @@ M.setup = function(o)
     buffer = o.repl,
     group = group,
     once = true,
-    desc = ('Clear buf #%d local cmds on job #%d (!%s) finish'):format(
+    desc = ('client buf #%d | repl buf #%d | job #%d (!%s)'):format(
       o.client,
+      o.repl,
       o.job,
       cmd
     ),
     callback = function()
-      vim.notify(
-        ('Finished: !%s (job %d)'):format(cmd, o.job),
-        vim.log.levels.INFO
-      )
-      require('ferrum.buffer').free(o.client, false, true)
+      User.fire.FerrumFinishREPLPost(o)
       return true
     end,
   })
 end
+
+vim.api.nvim_create_autocmd('User', {
+  group = group,
+  pattern = 'FerrumFinishREPLPost',
+  desc = 'Clear buflocal cmds on job finishing',
+  callback = function(args)
+    ---@type ferrum.autocmds.user.args
+    local o = args.data
+    local cmd = vim.fn.join(o.cmd)
+    vim.notify(
+      ('Finished: !%s (job %d)'):format(cmd, o.job),
+      vim.log.levels.INFO
+    )
+    require('ferrum.buffer').free(o.client, false, true, o.job)
+  end,
+})
 
 return M
 
